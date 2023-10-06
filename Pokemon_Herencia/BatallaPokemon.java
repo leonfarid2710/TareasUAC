@@ -23,7 +23,6 @@ public class BatallaPokemon {
         squirtle.atacar("Hidrobomba", magmar);
         magmar.atacar("Lanzallamas", squirtle);
 
-        System.out.println("Estado de Squirtle: HP=" + squirtle.getHP() + ", Nivel=" + squirtle.getNivel());
-        System.out.println("Estado de magmar: HP=" + magmar.getHP() + ", Nivel=" + magmar.getNivel());
+       
     }
 }
