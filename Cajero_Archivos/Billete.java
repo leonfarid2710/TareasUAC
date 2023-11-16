@@ -1,6 +1,7 @@
 import java.io.Serializable;
 
 public class Billete implements Serializable {
+    private static final long serialVersionUID = 123456789L; // Cambia este número según tus necesidades
     private int denominacion;
     private int cantidad;
 
@@ -15,9 +16,5 @@ public class Billete implements Serializable {
 
     public int getCantidad() {
         return cantidad;
-    }
-
-    public void setCantidad(int cantidad) {
-        this.cantidad = cantidad;
     }
 }
