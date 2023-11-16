@@ -1,44 +1,17 @@
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStreamReader;
-import java.util.Random;
+import java.util.Scanner;
 
 public class CajeroAutomáticoMain {
     public static void main(String[] args) {
-        // Solicitar nombre y pin
-        String nombre = obtenerEntradaUsuario("Ingrese su nombre: ");
-        int pin = obtenerPin("Ingrese el PIN: ");
+        Scanner scanner = new Scanner(System.in);
 
-        // Verificar acceso al modo administrador o cajero
-        if (nombre.equalsIgnoreCase("admin") && pin == 3243) {
-            // Acceder al modo administrador
-            Administrador admin = new Administrador();
-            admin.iniciarAdministrador();
-        } else {
-            // Acceder al modo cajero
-            CajeroAutomático cajero = new CajeroAutomático(nombre, pin);
-            cajero.iniciarCajero();
-        }
-    }
+        System.out.print("Ingrese su nombre: ");
+        String nombreUsuario = scanner.nextLine();
 
-    private static String obtenerEntradaUsuario(String mensaje) {
-        System.out.print(mensaje);
-        try {
-            return new BufferedReader(new InputStreamReader(System.in)).readLine();
-        } catch (IOException e) {
-            e.printStackTrace();
-            return "";
-        }
-    }
+        System.out.print("Ingrese su PIN (4 dígitos): ");
+        int pinUsuario = scanner.nextInt();
 
-    private static int obtenerPin(String mensaje) {
-        System.out.print(mensaje);
-        try {
-            return Integer.parseInt(new BufferedReader(new InputStreamReader(System.in)).readLine());
-        } catch (IOException | NumberFormatException e) {
-            e.printStackTrace();
-            return 0;
-        }
+        CajeroAutomático cajero = new CajeroAutomático(nombreUsuario, pinUsuario);
+        cajero.iniciarCajero();
     }
 }
 
