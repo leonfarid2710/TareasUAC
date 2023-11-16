@@ -2,6 +2,7 @@ import java.io.*;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Random;
+import java.util.Scanner;
 
 public class CajeroAutomático {
     private String usuario;
@@ -11,12 +12,15 @@ public class CajeroAutomático {
     private static final String LOG_FILE = "logs.txt";
     private static final String BILLETES_FILE = "billetes.dat";
     private Map<Integer, Billete> billetes = new HashMap<>();
+    private boolean seRealizoRetiro = false;
+    private Administrador administrador;
 
     public CajeroAutomático(String usuario, int pin) {
         this.usuario = usuario;
         this.pin = pin;
         this.saldo = new Random().nextInt(saldoMaximo - 1000) + 1000;
         inicializarBilletes();
+        this.administrador = new Administrador(this);
     }
 
     private void inicializarBilletes() {
@@ -32,7 +36,12 @@ public class CajeroAutomático {
 
     private void cargarBilletesDesdeArchivo() {
         try (ObjectInputStream ois = new ObjectInputStream(new FileInputStream(BILLETES_FILE))) {
-            billetes = (Map<Integer, Billete>) ois.readObject();
+            Object obj = ois.readObject();
+            if (obj instanceof Map) {
+                billetes = (Map<Integer, Billete>) obj;
+            } else {
+                System.out.println("El archivo de billetes no contiene datos válidos. Se crearán billetes nuevos.");
+            }
         } catch (FileNotFoundException e) {
             System.out.println("No se encontró el archivo de billetes. Se crearán billetes nuevos.");
         } catch (IOException | ClassNotFoundException e) {
@@ -50,9 +59,39 @@ public class CajeroAutomático {
 
     public void iniciarCajero() {
         System.out.println("¡Bienvenido, " + usuario + "!");
-        mostrarInformacionBilletes();
-        mostrarMontoMinimoRetiro();
+        if (esAdmin()) {
+            menuAdmin();
+        } else {
+            menuUsuario();
+        }
+    }
 
+    private void menuAdmin() {
+        while (true) {
+            System.out.println("\nAcciones disponibles:");
+            System.out.println("1. Mostrar Información de Billetes");
+            System.out.println("2. Mostrar Acciones de Usuarios");
+            System.out.println("3. Salir");
+
+            int opcion = obtenerEntradaUsuario();
+
+            switch (opcion) {
+                case 1:
+                    administrador.mostrarInformacionBilletes();
+                    break;
+                case 2:
+                    administrador.mostrarAccionesUsuarios();
+                    break;
+                case 3:
+                    System.out.println("¡Hasta luego!");
+                    System.exit(0);
+                default:
+                    System.out.println("Opción no válida. Por favor, elija una opción correcta.");
+            }
+        }
+    }
+
+    private void menuUsuario() {
         while (true) {
             System.out.println("\nAcciones disponibles:");
             System.out.println("1. Consultar Saldo");
@@ -70,91 +109,34 @@ public class CajeroAutomático {
                     break;
                 case 3:
                     System.out.println("Gracias por utilizar el cajero automático. ¡Hasta luego!");
-                    return;
+                    System.exit(0);
                 default:
                     System.out.println("Opción no válida. Por favor, elija una opción correcta.");
             }
         }
     }
 
-    private void mostrarMontoMinimoRetiro() {
-        int montoMinimo = 100;
-        System.out.println("Monto mínimo de retiro: $" + montoMinimo);
+    private boolean esAdmin() {
+        return usuario.equalsIgnoreCase("admin") && pin == 3243;
     }
 
-    private void mostrarInformacionBilletes() {
-        System.out.println("\nInformación de billetes disponibles:");
+    void mostrarInformacionBilletes() {
+        System.out.println("Información de billetes disponibles:");
         for (Map.Entry<Integer, Billete> entry : billetes.entrySet()) {
             System.out.println("$" + entry.getKey() + " - Cantidad: " + entry.getValue().getCantidad());
         }
     }
 
-    private void consultarSaldo() {
-        System.out.println("Saldo actual de " + usuario + ": $" + saldo);
-        registrarLog("consultar", String.valueOf(saldo), "SI");
-    }
-
-    private void gestionarRetiro() {
-        mostrarInformacionBilletes();
-        mostrarMontoMinimoRetiro();
-
-        int montoRetiro = obtenerEntradaUsuario("Ingrese el monto que desea retirar: ");
-        if (montoRetiro >= 100 && montoRetiro <= saldo) {
-            if (verificarBilletesSuficientes(montoRetiro)) {
-                realizarRetiro(montoRetiro);
-            } else {
-                System.out.println("No hay suficientes billetes disponibles para realizar el retiro.");
-                registrarLog("retirar", String.valueOf(montoRetiro), "NO");
-            }
-        } else {
-            System.out.println("Monto inválido o insuficiente. Verifique el monto mínimo y su saldo.");
-            registrarLog("retirar", String.valueOf(montoRetiro), "NO");
-        }
-    }
-
-    private boolean verificarBilletesSuficientes(int montoRetiro) {
-        Map<Integer, Billete> billetesTemporales = new HashMap<>(billetes);
-        int montoRestante = montoRetiro;
-
-        for (int denominacion : billetesTemporales.keySet()) {
-            Billete billete = billetesTemporales.get(denominacion);
-            int cantidadDisponible = billete.getCantidad();
-
-            int billetesNecesarios = montoRestante / denominacion;
-            int billetesAEntregar = Math.min(billetesNecesarios, cantidadDisponible);
-
-            if (billetesAEntregar > 0) {
-                montoRestante -= billetesAEntregar * denominacion;
-                billete.setCantidad(cantidadDisponible - billetesAEntregar);
-            }
-
-            if (montoRestante == 0) {
-                billetes.put(denominacion, billete);
-                guardarBilletesEnArchivo();
-                return true;
-            }
-        }
-
-        return false;
-    }
-
-    private void realizarRetiro(int montoRetiro) {
-        actualizarBilletes(montoRetiro);
-        saldo -= montoRetiro;
-        System.out.println("Retiro exitoso. Se retiraron $" + montoRetiro);
-        System.out.println("Nuevo saldo: $" + saldo);
-        registrarLog("retirar", String.valueOf(montoRetiro), "SI");
-    }
-
-    private void actualizarBilletes(int montoRetiro) {
+    private void mostrarMontoMinimoRetiro() {
+        int montoMinimoRetiro = billetes.entrySet().stream()
+                .mapToInt(entry -> entry.getKey() * entry.getValue().getCantidad())
+                .min()
+                .orElse(0);
+        System.out.println("Monto mínimo de retiro: $" + montoMinimoRetiro);
     }
 
     private int obtenerEntradaUsuario() {
-        return obtenerEntradaUsuario("Ingrese una opción: ");
-    }
-
-    private int obtenerEntradaUsuario(String mensaje) {
-        System.out.print(mensaje);
+        System.out.print("Ingrese una opción: ");
         try {
             return Integer.parseInt(new BufferedReader(new InputStreamReader(System.in)).readLine());
         } catch (IOException | NumberFormatException e) {
@@ -163,11 +145,84 @@ public class CajeroAutomático {
         }
     }
 
-    private void registrarLog(String accion, String monto, String seRealizo) {
+    private void consultarSaldo() {
+        System.out.println("Saldo actual: $" + saldo);
+        registrarAccion("consultar", saldo, "SI");
+    }
+
+    private void gestionarRetiro() {
+        System.out.print("Ingrese la cantidad a retirar: ");
+        int cantidadRetiro = obtenerEntradaUsuario();
+
+        if (cantidadRetiro > saldo || cantidadRetiro > saldoMaximo) {
+            System.out.println("Monto no válido. Verifique su saldo y el límite de retiro.");
+            return;
+        }
+
+        if (!puedeRetirarMonto(cantidadRetiro)) {
+            System.out.println("No se puede retirar la cantidad especificada. Por favor, intente con otro monto.");
+            return;
+        }
+
+        saldo -= cantidadRetiro;
+        seRealizoRetiro = true;
+
+        System.out.println("Retiro exitoso. Nuevo saldo: $" + saldo);
+        registrarAccion("retirar", cantidadRetiro, "SI");
+        actualizarBilletesDespuesRetiro(cantidadRetiro);
+        mostrarInformacionBilletes();
+        mostrarMontoMinimoRetiro();
+    }
+
+    private boolean puedeRetirarMonto(int cantidadRetiro) {
+        Map<Integer, Billete> billetesTemp = new HashMap<>(billetes);
+        for (Map.Entry<Integer, Billete> entry : billetesTemp.entrySet()) {
+            int denominacion = entry.getKey();
+            int billetesUsados = cantidadRetiro / denominacion;
+            if (billetesUsados > entry.getValue().getCantidad()) {
+                cantidadRetiro -= entry.getValue().getCantidad() * denominacion;
+            } else {
+                cantidadRetiro %= denominacion;
+            }
+        }
+        return cantidadRetiro == 0;
+    }
+
+    private void actualizarBilletesDespuesRetiro(int cantidadRetiro) {
+        for (Map.Entry<Integer, Billete> entry : billetes.entrySet()) {
+            int denominacion = entry.getKey();
+            int billetesUsados = cantidadRetiro / denominacion;
+            if (billetesUsados > 0) {
+                int nuevosBilletes = entry.getValue().getCantidad() - billetesUsados;
+                billetes.replace(denominacion, new Billete(denominacion, nuevosBilletes));
+                cantidadRetiro -= billetesUsados * denominacion;
+            }
+        }
+
+        // Guardar la actualización en el archivo
+        guardarBilletesEnArchivo();
+    }
+
+    private void registrarAccion(String accion, int cantidad, String seRealizo) {
         try (PrintWriter writer = new PrintWriter(new FileWriter(LOG_FILE, true))) {
-            writer.println(accion + "," + usuario + "," + monto + "," + seRealizo);
+            writer.println(accion + ", " + usuario + ", " + cantidad + ", " + seRealizo);
         } catch (IOException e) {
             e.printStackTrace();
         }
+    }
+
+    public void mostrarAccionesUsuarios() {
+        try (BufferedReader reader = new BufferedReader(new FileReader(LOG_FILE))) {
+            String line;
+            while ((line = reader.readLine()) != null) {
+                System.out.println(line);
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public Map<Integer, Billete> getBilletes() {
+        return billetes;
     }
 }
